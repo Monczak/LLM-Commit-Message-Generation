@@ -10,9 +10,10 @@ import nltk
 import traceback
 from openai import OpenAI
 import time
+import tqdm
 
-lan = 'py1.jsonl'
-output_file = 'vpy1no.jsonl'
+lan = 'datasets/py.jsonl'
+output_file = 'data/vpy1no.jsonl'
 
 def is_camel_case(s):
     return s != s.lower() and s != s.upper() and "_" not in s
@@ -104,7 +105,7 @@ model.to(device)
 
 # 读取JSON Lines文件并对每个diff进行向量化
 with open(lan, 'r',encoding='utf8') as file, open(output_file, 'a') as outfile:
-    for line in file:
+    for line in tqdm.tqdm(file):
 
         json_line = json.loads(line)
 
