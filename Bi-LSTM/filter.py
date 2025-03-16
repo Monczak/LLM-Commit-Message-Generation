@@ -2,12 +2,22 @@ import json
 import jsonlines
 import re
 import nltk
+import os
 
 # Read the input JSONL file
-input_file = 'input.jsonl'
-output_file = 'output.jsonl'
-other_output_file = 'other_data.jsonl'
-lan = ''
+input_file = '../datasets/py.jsonl'
+output_file = 'data/filter/output.jsonl'
+other_output_file = 'data/filter/other_data.jsonl'
+lan_output_file = 'data/filter/output_lan.jsonl'
+output_file1 = 'data/filter/1.jsonl'
+output_file2 = 'data/filter/2.jsonl'
+output_file3 = 'data/filter/3.jsonl'
+output_file4 = 'data/filter/4.jsonl'
+output_file5 = 'data/filter/5.jsonl'
+output_file6 = 'data/filter/6.jsonl'
+lan = 'py'  # Set to the language you're filtering for
+
+os.mkdir("data/filter")
 
 with open(input_file, 'r') as infile, open(lan_output_file, 'w') as lan_outfile, open(other_output_file, 'w') as other_outfile:
     for line in infile:
@@ -57,7 +67,6 @@ with open(input_file1, 'r') as infile, open(output_file1, 'w') as outfile:
 
 # Read input JSONL file
 input_file2 = output_file1
-output_file2 = '2.jsonl'
 
 with open(input_file2, 'r') as infile, open(output_file2, 'w') as outfile:
     for line in infile:
@@ -75,7 +84,7 @@ with open(input_file2, 'r') as infile, open(output_file2, 'w') as outfile:
         outfile.write(json.dumps(data) + '\n')
 
 input_file3 = output_file2
-output_file3 = '3.jsonl'
+
 # Define a function that takes diff as an argument and returns a list containing the function name
 def extract_function_names(diff):
     # Define an empty list to store function names
@@ -118,7 +127,6 @@ def process_jsonl(input_file, output_file):
 process_jsonl(input_file3, output_file3)
 
 input_file4 = output_file3
-output_file4 = '4.jsonl'
 
 def replace_function_names(msg, function_names):
     for function_name in function_names:
@@ -160,7 +168,7 @@ def replace_token(msg, diff):
     return msgnew
 
 input_file5 = output_file4
-output_file5 = '5.jsonl'
+
 # Define a function that accepts an input filename and an output filename as arguments to be processed and saved
 def process_jsonl(input_file, output_file):
     # Open the input file with the jsonlines module and get a reader object
@@ -185,7 +193,6 @@ def process_jsonl(input_file, output_file):
 process_jsonl(input_file5, output_file5)
 
 input_file6 = output_file5
-output_file6 = '6.jsonl'
 
 def replace_method_name(msg):
     # Replace "< method name >" with "<method name>"
@@ -206,7 +213,7 @@ with open(input_file6, 'r',encoding='UTF-8') as infile, open(output_file6, 'w',e
         outfile.write(json.dumps(data) + '\n')
 
 jsonl_file_path = output_file6
-output_jsonl_file_path = '6.jsonl'
+output_jsonl_file_path = output_file6
 
 def select_message_from_jsonl():
     # Load data from a JSONL file and return it
