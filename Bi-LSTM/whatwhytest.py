@@ -104,7 +104,8 @@ class BiLSTMLighting(pl.LightningModule):
         self.criterion = nn.CrossEntropyLoss()  # Setting the loss function
         self.train_dataset = MydataSet('./data/archive/train_clean.csv', 'train')
         self.val_dataset = MydataSet('./data/archive/val_clean.csv', 'train')
-        self.test_dataset = MydataSet('./data/archive/test_cleanjava.csv', 'train')
+        self.test_dataset = MydataSet('./data/archive/test_clean.csv', 'train')
+        self.test_step_outputs = []  # Initialize list to store test outputs
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=lr)
@@ -155,34 +156,47 @@ class BiLSTMLighting(pl.LightningModule):
         y_hat = self.model(input_ids, attention_mask, token_type_ids)
         # Prediction
         pred = torch.argmax(y_hat, dim=1)
-        with open("predgo.txt", "a", encoding="utf-8") as f:
-            f.write(str(pred))
-        # Return predictions and raw data
-        return {"pred": pred, "text": [i[0] for i in batch], "label": labels}
+
+        # Calculate accuracy for this batch
+        accuracy = (pred == labels).float().mean()
+        
+        # Log the accuracy
+        self.log("test_accuracy", accuracy, on_step=False, on_epoch=True)
+        
+        output = {"pred": pred, "label": labels}
+        self.test_step_outputs.append(output)  # Store output
+        return output
 
     def on_test_epoch_end(self):
+        # Access the collected outputs via self.test_step_outputs
         all_predictions = []
-        for output in self.trainer.callback_metrics:
-            preds = output["pred"].tolist()
-            texts = output["text"]
-            labels = output["label"].tolist()
-
-            for pred, text, label in zip(preds, texts, labels):
-                updated_record = {"new_message1": text, "label": label, "result": pred}
-                all_predictions.append(updated_record)
-
-        # Save as a new JSONL file
-        with open("predictions.jsonl", "w", encoding="utf-8") as file:
-            for record in all_predictions:
-                file.write(json.dumps(record) + "\n")
+        all_labels = []
+        
+        for output in self.test_step_outputs:
+            preds = output["pred"].cpu().tolist()
+            labels = output["label"].cpu().tolist()
+            
+            all_predictions.extend(preds)
+            all_labels.extend(labels)
+        
+        # Save predictions to file
+        with open("predictions.txt", "w") as f:
+            for pred, label in zip(all_predictions, all_labels):
+                f.write(f"Predicted: {pred}, Actual: {label}\n")
+                
+        print(f"Test completed. Predictions saved to predictions.txt")
+        
+        # Clear the outputs to free memory
+        self.test_step_outputs.clear()
 
 
 def test():
     # Load the parameters of the previously trained optimal model
     model = BiLSTMLighting.load_from_checkpoint(checkpoint_path=CHECKPOINT_PATH,
-                                                drop=dropout, hidden_dim=rnn_hidden, output_dim=class_num)
+                                               drop=dropout, hidden_dim=rnn_hidden, output_dim=class_num)
     trainer = Trainer(fast_dev_run=False)
-    trainer.test(model, verbose=True)
+    result = trainer.test(model, verbose=True)
+    print("Test completed with result:", result)
 
 if __name__ == '__main__':
     test()
