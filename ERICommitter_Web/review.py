@@ -9,10 +9,13 @@ from openai import OpenAI
 import time
 import traceback
 
+OPENAI_BASE_URL = "http://localhost:11434/v1" # For use with Ollama
+LLM_MODEL = "llama3.2:3b"
+
 sitekey = 'sduoj'
 
 # 选择适当的预训练模型和tokenizer
-model_name = "codereviewer"
+model_name = "microsoft/codereviewer"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
@@ -165,6 +168,7 @@ def generate_commit_message(code_text, diff_id, train_vectors_file, diff_msg_fil
     progress = 50
 
     client = OpenAI(
+        base_url=OPENAI_BASE_URL,
         api_key=api_key,
     )
 
@@ -176,13 +180,16 @@ def generate_commit_message(code_text, diff_id, train_vectors_file, diff_msg_fil
         best_diff = diff_msg_data[diff_id]['diff']
         best_msg = diff_msg_data[diff_id]['msg']
         messages.append({"role": "user",
-                         "content": f"{best_diff}\nPlease write a commit message that contains only one simple sentence for the above code change.\n{best_msg}\n\n"})
+                         "content": f"{best_diff}\nPlease write a commit message that contains only one simple sentence for the above code change."})
+        messages.append({"role": "assistant", "content":f"{best_msg}"})
 
     messages.append({"role": "user",
                      "content": f"{code_text}\nPlease write a commit message that contains only one simple sentence for the above code change.\n"})
 
+    print(messages)
+
     completion = client.chat.completions.create(
-        model="gpt-3.5-turbo-16k",
+        model=LLM_MODEL,
         messages=messages,
         max_tokens=128,
         temperature=0.8,

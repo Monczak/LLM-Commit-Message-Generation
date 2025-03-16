@@ -16,8 +16,8 @@ def generate():
     diff_id = request.form['diff_id']
     api_key = request.form['api_key']
     site_key = request.form['site_key']
-    train_vectors_file = 'vtrain_java.jsonl'
-    diff_msg_file = 'javatrainyuan3.jsonl'
+    train_vectors_file = 'data/vpy1no.jsonl'
+    diff_msg_file = 'datasets/py.jsonl'
 
     try:
         commit_message = review.generate_commit_message(code_text, diff_id, train_vectors_file, diff_msg_file, api_key, site_key)
