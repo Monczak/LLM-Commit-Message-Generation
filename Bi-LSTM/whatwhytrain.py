@@ -14,11 +14,15 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 import os
 import json
+from pathlib import Path
+
 torch.backends.cudnn.enable =True
 torch.backends.cudnn.benchmark = True
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 torch.set_float32_matmul_precision('high')
-PATH = "./lightning_logs/version_1/checkpoints/epoch=29-step=330.ckpt"
+
+CHECKPOINT_PATH = Path('./checkpoints/bi-lstm.ckpt')
+
 batch_size = 128
 epochs = 30
 dropout = 0.4
@@ -171,7 +175,7 @@ class BiLSTMLighting(pl.LightningModule):
 
 def test():
     # Load the parameters of the previously trained optimal model
-    model = BiLSTMLighting.load_from_checkpoint(checkpoint_path=PATH,
+    model = BiLSTMLighting.load_from_checkpoint(checkpoint_path=CHECKPOINT_PATH,
                                                 drop=dropout, hidden_dim=rnn_hidden, output_dim=class_num)
     trainer = Trainer(fast_dev_run=False)
     result = trainer.test(model)
@@ -189,10 +193,12 @@ if __name__ == '__main__':
         mode='min'
     )
     
+    checkpoint_dirpath = CHECKPOINT_PATH.parent
+    checkpoint_filename = CHECKPOINT_PATH.stem
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
-        dirpath='./checkpoints/',
-        filename='bilstm-{epoch:02d}-{val_loss:.2f}',
+        dirpath=checkpoint_dirpath,
+        filename=checkpoint_filename,
         save_top_k=1,
         mode='min'
     )

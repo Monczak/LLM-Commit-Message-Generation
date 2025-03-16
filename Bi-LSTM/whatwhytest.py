@@ -1,4 +1,3 @@
-
 import torch
 from datasets import load_dataset  # hugging-face dataset
 from torch.utils.data import Dataset
@@ -10,11 +9,15 @@ from torch.nn.functional import one_hot
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 import os
+from pathlib import Path
+
 torch.backends.cudnn.enable =True
 torch.backends.cudnn.benchmark = True
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 torch.set_float32_matmul_precision('high')
-PATH = "./lightning_logs/version_1/checkpoints/epoch=29-step=330.ckpt"
+
+CHECKPOINT_PATH = Path('./checkpoints/bi-lstm.ckpt')
+
 batch_size = 64
 epochs = 30
 dropout = 0.4
@@ -23,24 +26,20 @@ rnn_layer = 1
 class_num = 4
 lr = 0.001
 
+token = BertTokenizer.from_pretrained('bert-base-uncased')
+
 # todo: Customized datasets
 import json
 
 class MydataSet(Dataset):
     def __init__(self, path, split):
-        self.data = []
-        with open('go_output.jsonl', 'r', encoding='utf-8') as file:
-            for line in file:
-                self.data.append(json.loads(line))
-        # Further processing of self.data based on split parameters (e.g. “train”, “test”, etc.)
-
+        self.dataset = load_dataset('csv', data_files=path, split=split)
     def __getitem__(self, item):
-        text = self.data[item]['msg']  # Adjusted to the actual key name
-        label = 0  # Adjusted to the actual key name
+        text = self.dataset[item]['new_message1']
+        label = self.dataset[item]['label']
         return text, label
-
     def __len__(self):
-        return len(self.data)
+        return len(self.dataset)
 
 
 # todo: Defining batch functions
@@ -180,15 +179,10 @@ class BiLSTMLighting(pl.LightningModule):
 
 def test():
     # Load the parameters of the previously trained optimal model
-    model = BiLSTMLighting.load_from_checkpoint(checkpoint_path=PATH,
+    model = BiLSTMLighting.load_from_checkpoint(checkpoint_path=CHECKPOINT_PATH,
                                                 drop=dropout, hidden_dim=rnn_hidden, output_dim=class_num)
     trainer = Trainer(fast_dev_run=False)
-    result = trainer.test(model)
-    print(result)
+    trainer.test(model, verbose=True)
 
-token = BertTokenizer.from_pretrained('bert-base-uncased')
 if __name__ == '__main__':
-
-    model = BiLSTMLighting.load_from_checkpoint(checkpoint_path=PATH, drop=dropout, hidden_dim=rnn_hidden, output_dim=class_num)
-    trainer = Trainer()
-    trainer.test(model)
+    test()
