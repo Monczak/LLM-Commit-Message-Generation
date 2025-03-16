@@ -27,12 +27,14 @@ rnn_layer = 1
 class_num = 4
 lr = 0.001
 
+token = BertTokenizer.from_pretrained('bert-base-uncased')
+
 # todo：Customized datasets
 class MydataSet(Dataset):
     def __init__(self, path, split):
         self.dataset = load_dataset('csv', data_files=path, split=split)
     def __getitem__(self, item):
-        text = self.dataset[item]['new_message']
+        text = self.dataset[item]['new_message1']
         label = self.dataset[item]['label']
         return text, label
     def __len__(self):
@@ -94,13 +96,15 @@ class BiLSTMClassifier(nn.Module):
 num = 0
 # todo: Define pytorch lightning
 class BiLSTMLighting(pl.LightningModule):
-
+    
     def __init__(self, drop, hidden_dim, output_dim):
-        global num
         super(BiLSTMLighting, self).__init__()
         self.model = BiLSTMClassifier(drop, hidden_dim, output_dim)  # Setting up the model
         self.criterion = nn.CrossEntropyLoss()  # Setting the loss function
-        self.test_dataset = MydataSet(f'./data/archive/cstest/test{num}.csv', 'train')
+        # Initialize the datasets here
+        self.train_dataset = MydataSet('./data/archive/train_clean.csv', 'train')
+        self.val_dataset = MydataSet('./data/archive/val_clean.csv', 'train')
+        # Test dataset can be initialized separately
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=lr)
@@ -172,7 +176,32 @@ def test():
     trainer = Trainer(fast_dev_run=False)
     result = trainer.test(model)
     print(result)
-token = BertTokenizer.from_pretrained('bert-base-uncased')
-for i in range(5):
-    test()
-    num += 1
+
+if __name__ == '__main__':
+    # Initialize the model with the required parameters
+    model = BiLSTMLighting(drop=dropout, hidden_dim=rnn_hidden, output_dim=class_num)
+    
+    # Define callbacks for early stopping and model checkpointing
+    early_stop_callback = EarlyStopping(
+        monitor='val_loss',
+        patience=3,
+        verbose=True,
+        mode='min'
+    )
+    
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath='./checkpoints/',
+        filename='bilstm-{epoch:02d}-{val_loss:.2f}',
+        save_top_k=1,
+        mode='min'
+    )
+    
+    # Initialize the trainer (use GPU acceleration if available)
+    trainer = Trainer(
+        max_epochs=epochs,
+        callbacks=[early_stop_callback, checkpoint_callback],
+    )
+    
+    # Train the model
+    trainer.fit(model)
