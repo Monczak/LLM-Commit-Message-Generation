@@ -1,6 +1,7 @@
 __pycache__/
 venv/
-data/
+/data/
+/results/
 lightning_logs/
 
-Bi-LSTM/checkpoints/
+/Bi-LSTM/checkpoints/
