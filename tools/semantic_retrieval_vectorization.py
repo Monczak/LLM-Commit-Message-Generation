@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 import numpy as np
 import json
-# 准备您的代码差异文本
+# Prepare your code diff text
 from nltk.tokenize import word_tokenize
 import json
 import re
@@ -19,14 +19,14 @@ def is_camel_case(s):
     return s != s.lower() and s != s.upper() and "_" not in s
 
 def to_Underline(x):
-    """转空格命名"""
+    """Rename by transposing spaces"""
     return re.sub('(?<=[a-z])[A-Z]|(?<!^)[A-Z](?=[a-z])', ' \g<0>', x).lower()
 
 def remove_between_identifiers(text, identifier_start, identifier_end):
-    # 定义正则表达式模式
+    # Define regex patterns
     pattern = f'(?<={identifier_start}).*?(?={identifier_end})'
 
-    # 使用re.sub方法替换匹配到的部分为空字符串
+    # Use the re.sub method to replace the matched portion with the empty string
     result = re.sub(pattern, '', text)
     if identifier_start == 'mmm a':
         result = result.replace('mmm a<nl>', '')
@@ -94,47 +94,47 @@ def preprocess_code_diff(diff_text):
     return processed_diff
 
 
-# 选择适当的预训练模型和tokenizer
+# Selection of appropriate pre-trained models and tokenizers
 model_name = "microsoft/codereviewer"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
-# 移动模型到 GPU（如果可用）
+# Move model to GPU (if available)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-# 读取JSON Lines文件并对每个diff进行向量化
+# Read the JSON Lines file and vectorize each diff
 with open(lan, 'r',encoding='utf8') as file, open(output_file, 'a') as outfile:
     for line in tqdm.tqdm(file):
 
         json_line = json.loads(line)
 
         if 'diff' in json_line and 'diff_id' in json_line:
-            # 获取diff字段和diff_id
+            # Get diff field and diff_id
             diff = json_line['diff']
             result = remove_between_identifiers(diff, 'mmm a', '<nl>')
             code_diff1 = get_tokens(remove_between_identifiers(result, 'ppp b', '<nl>'))
             code_diff = preprocess_code_diff(code_diff1)
             diff_id = json_line['diff_id']
 
-            # 对代码差异文本进行tokenization，并将其移动到 GPU 上
+            # Tokenization of code difference text and moving it to the GPU
             input_ids = tokenizer.encode(code_diff, truncation=True, max_length=510, return_tensors="pt").to(device)
 
-            # 获取编码向量
+            # Get encoding vector
             model.eval()
             with torch.no_grad():
                 encoder_outputs = model.encoder(input_ids)
             encoded_vector = encoder_outputs.last_hidden_state.cpu().numpy()
-            # 获取第一个输出作为编码向量
+            # Get the first output as an encoded vector
             cls_vector = encoder_outputs.last_hidden_state[0, 0, :].cpu().numpy().tolist()
 
-            # cls_vector现在是一个包含768个元素的一维数组
-            #print(len(cls_vector))
-            # 创建一个包含diff_id和编码向量的字典
+            # cls_vector is now a 1D array of 768 elements
+            # print(len(cls_vector))
+            # Create a dictionary with diff_id and encoding vector
             output_dict = {
                 "diff_id": diff_id,
                 "cls_vector": cls_vector
             }
 
-            # 将字典写入输出文件
+            # Write dictionary to output file
             outfile.write(json.dumps(output_dict) + '\n')

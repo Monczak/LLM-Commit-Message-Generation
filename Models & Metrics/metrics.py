@@ -24,24 +24,24 @@ nlp_file_path = 'gptjavainnlp.jsonl'
 
 def calculate_meteor(sentence1, sentence2):
     """
-    计算两个句子之间的METEOR分数
+    Calculate the METEOR score between two sentences
     """
-    # 将两个句子转换为词频向量
+    # Convert two sentences into word frequency vectors
     vectorizer = CountVectorizer().fit([sentence1, sentence2])
     sentence1_vector = vectorizer.transform([sentence1])
     sentence2_vector = vectorizer.transform([sentence2])
 
-    # 计算两个向量的余弦相似度
+    # Compute the cosine similarity of two vectors
     similarity = cosine_similarity(sentence1_vector, sentence2_vector)[0][0]
 
-    # 根据METEOR公式计算分数
+    # Calculate the score according to the METEOR formula
     score = 2 * similarity * len(sentence1) * len(sentence2) / (len(sentence1) + len(sentence2))
     return score
 
 
 def calculate_bleu(reference, translation):
     """
-    计算BLEU分数
+    Calculate BLEU score
     """
     bleu_score = sentence_bleu([reference], translation)
     return bleu_score
@@ -49,7 +49,7 @@ def calculate_bleu(reference, translation):
 
 def calculate_rouge_l(reference, translation):
     """
-    计算ROUGE-L分数
+    Calculate ROUGE-L score
     """
     rouge = Rouge()
     rouge_l_score = rouge.get_scores(translation, reference, avg=True)['rouge-l']
@@ -61,7 +61,7 @@ def is_camel_case(s):
 
 
 def to_Underline(x):
-    """转空格命名"""
+    """Rename by transposing spaces"""
     return re.sub('(?<=[a-z])[A-Z]|(?<!^)[A-Z](?=[a-z])', ' \g<0>', x).lower()
 
 
@@ -74,10 +74,10 @@ def get_tokens(text):
 
 
 def remove_between_identifiers(text, identifier_start, identifier_end):
-    # 定义正则表达式模式
+    # Define regex patterns
     pattern = f'(?<={identifier_start}).*?(?={identifier_end})'
 
-    # 使用re.sub方法替换匹配到的部分为空字符串
+    # Use the re.sub method to replace the matched portion with the empty string
     result = re.sub(pattern, '', text)
     if identifier_start == 'mmm a':
         result = result.replace('mmm a<nl>', '')
@@ -93,32 +93,32 @@ def remove_between_identifiers(text, identifier_start, identifier_end):
     return result
 
 
-# 读取JSONL文件
+# Read JSONL files
 with open(file, 'r') as f:
     lines = f.readlines()
 with open(nlp_file_path, 'w') as f:
     f.write('')
-# 处理每一行JSON数据
+# Processing each line of JSON data
 new_lines = []
 for line in lines:
     data = json.loads(line)
-    # 检查msg和msgGPT是否都为字符串'0'
+    # Check if msg and msgGPT are both string '0'
     if isinstance(data['msg'], str) and data['msg'] == '0' and isinstance(data['msgGPT'], str) and data[
         'msgGPT'] == '0':
-        # 如果是，则删除该行数据
+        # If yes, delete the row of data
         continue
     new_lines.append(line)
 
-# 将处理后的JSON数据写回文件
+# Write processed JSON data back to file
 with open(file, 'w') as f:
     f.writelines(new_lines)
 
-# 打开JSONL文件并读取数据
+# Open the JSONL file and read the data
 with open(file, 'r') as f:
     json_data = f.readlines()
 
 for item in json_data:
-    # 解析 JSON 数据
+    # Parse JSON data
     data = json.loads(item)
     diff_id = data['diff_id']
     msg = data['msg']
@@ -151,7 +151,7 @@ for item in json_data:
     meteor_score = calculate_meteor(msg, msgGPT)
 
 
-    # 将 diff 和 msg ,score添加到列表中
+    # Add diff and msg, score to list
     data = {"diff_id": diff_id, "msg": f"{msg}", "msgGPT": f"{msgGPT}", "METEOR Score": f"{meteor_score}",
             "BLEU Score": f"{bleu_score}", "ROUGE-L Score": f"{rouge_l_score['f']}"}
     with open(nlp_file_path, 'a') as f:
@@ -160,43 +160,43 @@ for item in json_data:
 
 
 
-# 初始化变量来保存总分
+# Initialize the variable to hold the total score
 total_meteor_score = 0
 total_bleu_score = 0
 total_rouge_l_score = 0
 
-# 文件句柄
+# File handle
 def count_jsonl_lines(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
     return len(lines)
 
 
- # 这里放你的 JSONL 文件路径
+# Path to your JSONL file
 x = count_jsonl_lines(nlp_file_path)
 
 with open(nlp_file_path, 'r') as f:
-    # 逐行读取文件
+    # Reading files line by line
     for line in f:
-        # 解码每一行，得到一个json对象
+        # Decode each line to get a json object
         json_obj = json.loads(line)
 
-        # 从json对象中获取分数
+        # Get score from json object
         meteor_score = float(json_obj.get("METEOR Score", 0))
         bleu_score = float(json_obj.get("BLEU Score", 0))
         rouge_l_score = float(json_obj.get("ROUGE-L Score", 0))
 
-        # 添加到总分中
+        # Add to total score
         total_meteor_score += meteor_score
         total_bleu_score += bleu_score
         total_rouge_l_score += rouge_l_score
 
-    # 计算平均分
+# Calculation of average scores
 average_meteor_score = total_meteor_score / x
 average_bleu_score = total_bleu_score / x
 average_rouge_l_score = total_rouge_l_score / x
 
-# 输出平均分
+# Output average score
 print(f"Average METEOR Score: {average_meteor_score}")
 print(f"Average BLEU Score: {average_bleu_score}")
 print(f"Average ROUGE-L Score: {average_rouge_l_score}")

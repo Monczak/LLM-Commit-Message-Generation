@@ -14,12 +14,12 @@ LLM_MODEL = "llama3.2:3b"
 
 sitekey = 'sduoj'
 
-# 选择适当的预训练模型和tokenizer
+# Selection of appropriate pre-trained models and tokenizers
 model_name = "microsoft/codereviewer"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
-# 移动模型到 GPU（如果可用）
+# Move model to GPU (if available)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
@@ -31,7 +31,7 @@ def to_Underline(x):
     return re.sub('(?<=[a-z])[A-Z]|(?<!^)[A-Z](?=[a-z])', ' \g<0>', x).lower()
 
 def remove_between_identifiers(text, identifier_start, identifier_end):
-    # 定义正则表达式模式
+    # Define regex patterns
     pattern = f'(?<={identifier_start}).*?(?={identifier_end})'
     result = re.sub(pattern, '', text)
     if identifier_start == 'mmm a':
@@ -86,15 +86,15 @@ def preprocess_code_diff(diff_text):
     return processed_diff
 
 def generate_vector(code_text):
-    # 预处理代码差异文本
+    # Preprocessing code difference text
     result = remove_between_identifiers(code_text, 'mmm a', '<nl>')
     code_diff1 = get_tokens(remove_between_identifiers(result, 'ppp b', '<nl>'))
     code_diff = preprocess_code_diff(code_diff1)
 
-    # 对代码文本进行tokenization，并将其移动到 GPU 上
+    # Tokenization of code text and moving it to the GPU
     input_ids = tokenizer.encode(code_diff, truncation=True, max_length=510, return_tensors="pt").to(device)
 
-    # 获取编码向量
+    # Get encoding vector
     model.eval()
     with torch.no_grad():
         encoder_outputs = model.encoder(input_ids)
@@ -103,7 +103,7 @@ def generate_vector(code_text):
     return cls_vector
 
 def load_vectors(jsonl_file):
-    """从JSONL文件中加载diff_id和向量"""
+    """Load diff_id and vector from JSONL file"""
     vectors = {}
     with open(jsonl_file, 'r') as file:
         for line in file:
@@ -112,18 +112,18 @@ def load_vectors(jsonl_file):
     return vectors
 
 def cosine_similarity(vec_a, vec_b):
-    """计算两个向量的余弦相似度"""
+    """Compute the cosine similarity of two vectors"""
     return np.dot(vec_a, vec_b) / (norm(vec_a) * norm(vec_b))
 
 def get_top_similar(test_vec, train_vectors, top_k=5):
-    """获取与测试向量最相似的top_k个训练向量的diff_id"""
+    """Get the diff_id of the top_k training vectors that are most similar to the test vector"""
     similarities = {train_id: cosine_similarity(test_vec, train_vec)
                     for train_id, train_vec in train_vectors.items()}
-    # 根据相似度排序并取前top_k个
+    # Sort by similarity and take the first top_k
     return sorted(similarities, key=similarities.get, reverse=True)[:top_k]
 
 def get_diff_msg(jsonl_file, diff_ids):
-    """从JSONL文件中获取特定diff_id的diff和msg"""
+    """Get diff and msg for a specific diff_id from a JSONL file"""
     diff_msg = {}
     with open(jsonl_file, 'r') as file:
         for line in file:

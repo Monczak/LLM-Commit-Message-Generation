@@ -20,33 +20,32 @@ from gradio_client import Client
 #@retry(wait=wait_random_exponential(min=1, max=60), retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError)))
 lan = 'py.jsonl'
 out_filename = 'java_result_7B.jsonl'
-
 def calculate_meteor(sentence1, sentence2):
     """
-    计算两个句子之间的METEOR分数
+    Calculate the METEOR score between two sentences
     """
-    # 将两个句子转换为词频向量
+    # Convert two sentences into word frequency vectors
     vectorizer = CountVectorizer().fit([sentence1, sentence2])
     sentence1_vector = vectorizer.transform([sentence1])
     sentence2_vector = vectorizer.transform([sentence2])
     
-    # 计算两个向量的余弦相似度
+    # Compute the cosine similarity of two vectors
     similarity = cosine_similarity(sentence1_vector, sentence2_vector)[0][0]
     
-    # 根据METEOR公式计算分数
+    # Calculate the score according to the METEOR formula
     score = 2 * similarity * len(sentence1) * len(sentence2) / (len(sentence1) + len(sentence2))
     return score
 
 def calculate_bleu(reference, translation):
     """
-    计算BLEU分数
+    Calculate BLEU score
     """
     bleu_score = sentence_bleu([reference], translation)
     return bleu_score
 
 def calculate_rouge_l(reference, translation):
     """
-    计算ROUGE-L分数
+    Calculate ROUGE-L score
     """
     rouge = Rouge()
     rouge_l_score = rouge.get_scores(translation, reference, avg=True)['rouge-l']
@@ -57,7 +56,7 @@ def is_camel_case(s):
 
 
 def to_Underline(x):
-    """转空格命名"""
+    """Rename by transposing spaces"""
     return re.sub('(?<=[a-z])[A-Z]|(?<!^)[A-Z](?=[a-z])', ' \g<0>', x).lower()
 
 def get_tokens(text):
@@ -68,10 +67,10 @@ def get_tokens(text):
         return ' '.join(tokens)
 
 def remove_between_identifiers(text, identifier_start, identifier_end):
-    # 定义正则表达式模式
+    # Define regex patterns
     pattern = f'(?<={identifier_start}).*?(?={identifier_end})'
 
-    # 使用re.sub方法替换匹配到的部分为空字符串
+    # Use the re.sub method to replace the matched portion with the empty string
     result = re.sub(pattern, '', text)
     if identifier_start == 'mmm a':
         result = result.replace('mmm a<nl>', '')
@@ -86,23 +85,23 @@ def remove_between_identifiers(text, identifier_start, identifier_end):
     result = result.replace(') ', ')')
     return result
 
-# 打开JSONL文件并读取数据
+# Open the JSONL file and read the data
 with open(lan, 'r',encoding='UTF-8') as f:
     json_data = f.readlines()
 data = {"diff_id":0, "msg": f"0", "msgGPT": f"0", "METEOR Score" : f"0", "BLEU Score" : f"0","ROUGE-L Score":f"0"}
 with open('java_final_no_result_7B7.jsonl', 'a',encoding='UTF-8') as f:
     json.dump(data, f)
     f.write('\n')
-# 遍历 JSON 数据，提取并存储 diff 和 msg
+# Traverse JSON data, extract and store diffs and msgs
 #num = 0
 for item in json_data:
     attempts = 0
     while attempts < 3:
 
-        # 解析 JSON 数据
+        # Parse JSON data
         data = json.loads(item)
 
-        # 提取 diff 和 msg
+        # Extract diff and msg
         diff_id = data['diff_id']
         diff = data['diff']
         result = remove_between_identifiers(diff, 'mmm a', '<nl>')
@@ -130,12 +129,12 @@ for item in json_data:
                 f'''
     {diff}\n Please write a commit message that contains only one simple sentence for the above code change.\n''',
                 # {"role": "user", "content": "Use END_OF_CASE to finish your answer.\n"},
-                "You are a programmer who makes the above code changes.",  # 替换为您的消息文本
-                1024,  # 替换为您的参数值
-                0.1,  # 替换为您的参数值
-                0.05,  # 替换为您的参数值
-                1,  # 替换为您的参数值
-                1,  # 替换为您的参数值
+                "You are a programmer who makes the above code changes.",  # Replace with your message text
+                1024,  # Replace with your parameter value
+                0.1,  # Replace with your parameter value
+                0.05,  # Replace with your parameter value
+                1,  # Replace with your parameter value
+                1,  # Replace with your parameter value
                 api_name="/chat"
             )
             msgGPT = response
@@ -154,23 +153,23 @@ for item in json_data:
             print(msgGPT)
 
             data = {"diff_id": diff_id, "msg": f"{msg}", "msgGPT": f"{msgGPT}"}
-            # 获取 "msgGPT" 的内容
+            # Get the contents of msgGPT
             msg_content = data.get("msgGPT", "")
-            # 查找第一个 \" 的位置
+            # Find the location of the first "
             first_escape_start = msg_content.find('\"')
             first_escape_end = first_escape_start + 1
-            # 查找第二个 \" 的位置
+            # Find the location of the second "
             second_escape_start = msg_content.find('\"', first_escape_end + 1)
             second_escape_end = second_escape_start + 1
-            # 判断找到的位置是否合理
+            # Determine if the location found is reasonable
             if first_escape_start != -1 and first_escape_end != -1 and second_escape_start != -1 and second_escape_end != -1:
-                # 更新 "msgGPT" 的内容
+                # Update msgGPT
                 updated_msgGPT = msg_content[first_escape_end:second_escape_start].strip()
                 data["msgGPT"] = updated_msgGPT
 
             msg = data.get("msg")
             msgGPT = data.get("msgGPT")
-            # 将 diff 和 msg ,score添加到列表中
+            # Add diff and msg, score to list
             bleu_score = calculate_bleu(msg, msgGPT)
             rouge_l_score = calculate_rouge_l(msg, msgGPT)
             meteor_score = calculate_meteor(msg, msgGPT)
@@ -179,7 +178,7 @@ for item in json_data:
             print("ROUGE-L Score:", rouge_l_score)
             print("")
 
-            # 将 diff 和 msg ,score添加到列表中
+            # Add diff and msg, score to list
             data1 = {"METEOR Score": f"{meteor_score}",
                     "BLEU Score": f"{bleu_score}", "ROUGE-L Score": f"{rouge_l_score['f']}"}
 
@@ -201,10 +200,10 @@ for item in json_data:
             #time.sleep(5)
             attempts += 1
             if attempts == 3:
-                print(f"{item} 已经重试了3次，仍然失败。")
-                # 这里可以选择记录失败的item，或者是进行其他错误处理
+                print(f"{item} has been retried 3 times and still fails.")
+                # Here you can choose to log the failed item, or do other error handling
                 # ...
-                break  # 重试达到3次后，跳出内部循环，处理下一个item
+                break  # After 3 retries, the internal loop is skipped and the next item is processed.
 
 
 

@@ -3,7 +3,7 @@ import jsonlines
 import re
 import nltk
 
-# 读取输入 JSONL 文件
+# Read the input JSONL file
 input_file = 'input.jsonl'
 output_file = 'output.jsonl'
 other_output_file = 'other_data.jsonl'
@@ -45,17 +45,17 @@ with open(input_file1, 'r') as infile, open(output_file1, 'w') as outfile:
             end_index = diff_text.find("<nl>", start_index)
             if start_index != -1 and end_index != -1:
                 extracted_data = diff_text[start_index + len("ppp b "):end_index]
-                # 仅保留最后一个 "/" 和 "." 之间的内容
+                # Keep only the last "/" and "." between the last "/" and “.
                 last_slash_index = extracted_data.rfind("/")
                 last_dot_index = extracted_data.rfind(".")
                 if last_slash_index != -1 and last_dot_index != -1:
                     extracted_data = extracted_data[last_slash_index + 1:last_dot_index]
-                # 将提取的数据添加到原数据集中，覆盖 "file_name"
+                # Add the extracted data to the original dataset, overwriting "file_name"
                 data['file_name'] = extracted_data
-        # 写入包含处理后的数据的原数据集到输出文件
+        # Write the original dataset containing the processed data to the output file
         outfile.write(json.dumps(data) + '\n')
 
-# 读取输入 JSONL 文件
+# Read input JSONL file
 input_file2 = output_file1
 output_file2 = '2.jsonl'
 
@@ -65,56 +65,56 @@ with open(input_file2, 'r') as infile, open(output_file2, 'w') as outfile:
         if 'msg' in data and 'file_name' in data:
             msg = data['msg']
             file_name = data['file_name']
-            # 检查"msg"中是否包含"file_name"对应的内容
+            # Check if "msg" contains the content of "file_name".
             if file_name in msg:
-                # 用"<file_name>"替换msg中原对应内容的字符数据
+                # Replace the character data in msg with "<file_name>".
                 msg = msg.replace(file_name, ' <file_name> ')
-            # 更新数据中的"msg"字段
+            # Update the "msg" field in the data
             data['msg'] = msg
-        # 将更新后的数据写入输出文件
+        # Write the updated data to the output file
         outfile.write(json.dumps(data) + '\n')
 
 input_file3 = output_file2
 output_file3 = '3.jsonl'
-# 定义一个函数，接受diff作为参数，返回一个包含函数名的列表
+# Define a function that takes diff as an argument and returns a list containing the function name
 def extract_function_names(diff):
-    # 定义一个空列表，用于存储函数名
+    # Define an empty list to store function names
     global lan
     function_names = []
-    # 定义一个正则表达式，用于匹配返回值类型和函数名
+    # Define a regular expression to match the return value type and function name
     if lan == 'java'or'cpp'or'csharp':
         pattern = r"\w+\s+(\w+)\s*\("
     if lan == 'py':
         pattern = r'def\s+(\w+)'
     if lan == 'js':
         pattern = r'function\s+(\w+)'
-    # 用re模块的findall方法，在diff中查找所有符合pattern的字符串，得到一个列表
+    # Use the findall method of the re module to find all the strings in the diff that match the pattern and get a list of them
     matches = re.findall(pattern, diff)
-    # 遍历matches列表中的每个字符串
+    # Iterate over each string in the matches list
     for match in matches:
-        # 把字符串添加到function_names列表中
+        # Add strings to the function_names list
         function_names.append(match)
-    # 返回function_names列表
+    # Return a list of function names
     return function_names
 
-# 定义一个函数，接受输入文件名和输出文件名作为参数，进行处理和保存
+# Define a function that accepts an input filename and an output filename as arguments to be processed and saved
 def process_jsonl(input_file, output_file):
-    # 用jsonlines模块打开输入文件，得到一个reader对象
+    # Open the input file with the jsonlines module and get a reader object
     with jsonlines.open(input_file) as reader:
-        # 用jsonlines模块打开输出文件，得到一个writer对象
+        # Open the output file with the jsonlines module and get a writer object
         with jsonlines.open(output_file, mode='w') as writer:
-            # 遍历reader对象中的每一条json
+            # Iterate over each json in the reader object
             for obj in reader:
-                # 取出diff属性的值
+                # Take the value of the diff attribute
                 diff = obj['diff']
-                # 调用extract_function_names函数，得到一个包含函数名的列表
+                # Call the extract_function_names function to get a list containing function names
                 function_names = extract_function_names(diff)
-                # 把obj中添加一个function_names属性，值为function_names列表
+                # Add a function_names attribute to the obj with the value function_names list
                 obj['function_names'] = function_names
                 #print(function_names)
-                # 用writer对象把obj写入输出文件中
+                # Write the obj to the output file using the writer object
                 writer.write(obj)
-# 测试函数
+# Test function
 process_jsonl(input_file3, output_file3)
 
 input_file4 = output_file3
@@ -132,63 +132,63 @@ with open(input_file4, 'r',encoding='UTF-8') as infile, open(output_file4, 'w',e
         if 'msg' in data and 'function_names' in data:
             msg = data['msg']
             function_names = data['function_names']
-            # 替换msg中包含在function_names列表中的内容
+            # Replace the contents of the msg contained in the list of function_names
             msg = replace_function_names(msg, function_names)
-            # 更新数据中的"msg"字段
+            # Update the "msg" field in the data
             data['msg'] = msg
-        # 将更新后的数据写入输出文件
+        # Write the updated data to the output file
         outfile.write(json.dumps(data) + '\n')
 
-# 定义一个函数，接受msg和diff作为参数，返回替换后的msgnew
+# Define a function that takes msg and diff as arguments and returns the replaced msgnew
 def replace_token(msg, diff):
-    # 用nltk的word_tokenize方法对msg和diff进行分词，得到两个列表
+    # Segmenting msg and diff with nltk's word_tokenize method yields two lists
     msg_tokens = nltk.word_tokenize(msg)
     diff_tokens = nltk.word_tokenize(diff)
-    # 定义一个空列表，用于存储替换后的msg的token
+    # Define an empty list to store tokens for replaced msgs
     msgnew_tokens = []
-    # 遍历msg的token
+    # Iterate over the tokens of msg
     for token in msg_tokens:
-        # 如果这个token在diff的token中出现过，就把它替换为<iden>
+        # If this token appears in diff's token, replace it with <iden>
         if (token in diff_tokens) and len(token) > 5 and (token != '<file_name>') and (token != '<method_name>') :
 
             token = "<iden>"
-        # 把替换后的token添加到列表中
+        # Add the replaced token to the list
         msgnew_tokens.append(token)
-    # 用空格把列表中的token连接起来，得到msgnew
+    # Concatenate the tokens in the list with spaces to get msgnew
     msgnew = " ".join(msgnew_tokens)
-    # 返回msgnew
+    # Return msgnew
     return msgnew
 
 input_file5 = output_file4
 output_file5 = '5.jsonl'
-# 定义一个函数，接受输入文件名和输出文件名作为参数，进行处理和保存
+# Define a function that accepts an input filename and an output filename as arguments to be processed and saved
 def process_jsonl(input_file, output_file):
-    # 用jsonlines模块打开输入文件，得到一个reader对象
+    # Open the input file with the jsonlines module and get a reader object
     with jsonlines.open(input_file) as reader:
-        # 用jsonlines模块打开输出文件，得到一个writer对象
+        # Open the output file with the jsonlines module and get a writer object
         with jsonlines.open(output_file, mode='w') as writer:
-            # 遍历reader对象中的每一条json
+            # Iterate over each json in the reader object
             for obj in reader:
-                # 取出msg和diff属性的值
+                # Take the values of the msg and diff attributes
                 msg = obj['msg']
                 diff = obj['diff']
-                # 调用replace_token函数，得到msgnew
+                # Call the replace_token function to get msgnew
                 msgnew = replace_token(msg, diff)
                 #print(msgnew)
-                # 把obj中的msg属性替换为msgnew属性
+                # Replace the msg attribute in obj with the msgnew attribute
                 obj.pop('msg')
                 obj['msg'] = msgnew
 
-                # 用writer对象把obj写入输出文件中
+                # Write the obj to the output file using the writer object
                 writer.write(obj)
-# 测试函数
+# Test function
 process_jsonl(input_file5, output_file5)
 
 input_file6 = output_file5
 output_file6 = '6.jsonl'
 
 def replace_method_name(msg):
-    # 替换"< method_name >"为"<method_name>"
+    # Replace "< method name >" with "<method name>"
     msg = msg.replace('< method_name >', '<method_name>')
     msg = msg.replace('< file_name >', '<file_name>')
     return msg
@@ -198,18 +198,18 @@ with open(input_file6, 'r',encoding='UTF-8') as infile, open(output_file6, 'w',e
         data = json.loads(line)
         if 'msg' in data:
             msg = data['msg']
-            # 替换"< method_name >"为"<method_name>"
+            # Replace "< method_name >" with "<method_name>"
             msg = replace_method_name(msg)
-            # 更新数据中的"msg"字段
+            # Update "msg" field in data
             data['msg'] = msg
-        # 将更新后的数据写入输出文件
+        # Write the updated data to the output file
         outfile.write(json.dumps(data) + '\n')
 
 jsonl_file_path = output_file6
 output_jsonl_file_path = '6.jsonl'
 
 def select_message_from_jsonl():
-    # 从JSONL文件中加载数据并返回
+    # Load data from a JSONL file and return it
     with open(jsonl_file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
     samples = []
@@ -222,7 +222,7 @@ def select_message_from_jsonl():
     return samples
 
 def update_jsonl_file(samples):
-    # 将处理后的数据写回JSONL文件
+    # Write the processed data back to the JSONL file
     with open(output_jsonl_file_path, 'w', encoding='utf-8') as file:
         for sample in samples:
             data = {
@@ -319,7 +319,7 @@ if __name__ == '__main__':
 
     update_jsonl_file(messages)
 
-# 读取第一个和第二个JSONL文件
+# Read the first and second JSONL files
 input_file_1 = output_file6
 input_file_2 = output_jsonl_file_path
 
@@ -333,12 +333,12 @@ def load_jsonl(file):
 data_1 = load_jsonl(input_file_1)
 data_2 = load_jsonl(input_file_2)
 
-# 替换第一个文件中的"msg"内容
+# Replace the contents of "msg" in the first file
 if len(data_1) == len(data_2):
     for i in range(len(data_1)):
         data_1[i]['msg'] = data_2[i]['msg']
 
-# 写入输出文件
+# Write to output file
 with open(output_file, 'w', encoding='utf-8') as outfile:
     for item in data_1:
         outfile.write(json.dumps(item) + '\n')

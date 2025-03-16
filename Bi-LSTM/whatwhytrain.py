@@ -1,5 +1,5 @@
 
-from torchmetrics.functional import accuracy, recall, precision, f1_score  # lightning中的评估
+from torchmetrics.functional import accuracy, recall, precision, f1_score  # Evaluation in lightning
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
@@ -27,7 +27,7 @@ rnn_layer = 1
 class_num = 4
 lr = 0.001
 
-# todo：自定义数据集
+# todo：Customized datasets
 class MydataSet(Dataset):
     def __init__(self, path, split):
         self.dataset = load_dataset('csv', data_files=path, split=split)
@@ -38,32 +38,32 @@ class MydataSet(Dataset):
     def __len__(self):
         return len(self.dataset)
 
-# todo: 定义批处理函数
+# todo: Define batch functions
 def collate_fn(data):
     sents = [i[0] for i in data]
     labels = [i[1] for i in data]
-    # 分词并编码
+    # Combine words and encode
     data = token.batch_encode_plus(
-        batch_text_or_text_pairs=sents,  # 单个句子参与编码
-        truncation=True,  # 当句子长度大于max_length时,截断
-        padding='max_length',  # 一律补pad到max_length长度
+        batch_text_or_text_pairs=sents,  # Individual sentences are involved in encoding
+        truncation=True,  # Truncate when sentence length is greater than max_length
+        padding='max_length',  # Always pad to max_length
         max_length=200,
-        return_tensors='pt',  # 以pytorch的形式返回，可取值tf,pt,np,默认为返回list
+        return_tensors='pt',  # Return in the form of pytorch, can take the value of tf, pt, np, the default is to return the list
         return_length=True,
     )
 
-    # input_ids:编码之后的数字
-    # attention_mask:是补零的位置是0,其他位置是1
-    input_ids = data['input_ids']  # input_ids 就是编码后的词
-    attention_mask = data['attention_mask']  # pad的位置是0,其他位置是1
-    token_type_ids = data['token_type_ids']  # (如果是一对句子)第一个句子和特殊符号的位置是0,第二个句子的位置是1
-    labels = torch.LongTensor(labels)  # 该批次的labels
+    # input_ids: number after encoding
+    # attention_mask: the position of the complementary zero is 0, the other position is 1
+    input_ids = data['input_ids']  # input_ids are the encoded words
+    attention_mask = data['attention_mask']  # The pad position is 0, the other positions are 1
+    token_type_ids = data['token_type_ids']  # (In the case of a pair of sentences) the position of the first sentence and the special symbol is 0, the position of the second sentence is 1
+    labels = torch.LongTensor(labels)  # Labels from this batch
 
     # print(data['length'], data['length'].max())
     return input_ids, attention_mask, token_type_ids, labels
 
 
-# todo: 定义模型，上游使用bert预训练，下游任务选择双向LSTM模型，最后加一个全连接层
+# todo: Define the model, use bert pre-training for upstream, choose a bi-directional LSTM model for downstream tasks, and finally add a fully connected layer
 class BiLSTMClassifier(nn.Module):
     def __init__(self, drop, hidden_dim, output_dim):
         super(BiLSTMClassifier, self).__init__()
@@ -71,17 +71,17 @@ class BiLSTMClassifier(nn.Module):
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
 
-        # 加载bert中文模型,生成embedding层
+        # Load bert Chinese model and generate embedding layer
         self.embedding = BertModel.from_pretrained('bert-base-uncased')
-        # 去掉移至gpu
-        # 冻结上游模型参数(不进行预训练模型参数学习)
+        # Remove and move to gpu
+        # Freeze upstream model parameters (no pre-training model parameter learning)
         for param in self.embedding.parameters():
             param.requires_grad_(False)
-        # 生成下游RNN层以及全连接层
+        # Generate downstream RNN layers as well as fully connected layers
         self.lstm = nn.LSTM(input_size=768, hidden_size=self.hidden_dim, num_layers=2, batch_first=True,
                             bidirectional=True, dropout=self.drop)
         self.fc = nn.Linear(self.hidden_dim * 2, self.output_dim)
-        # 使用CrossEntropyLoss作为损失函数时，不需要激活。因为实际上CrossEntropyLoss将softmax-log-NLLLoss一并实现的。
+        # No activation is required when using CrossEntropyLoss as a loss function. Because actually CrossEntropyLoss implements softmax-log-NLLLoss together
 
     def forward(self, input_ids, attention_mask, token_type_ids):
         embedded = self.embedding(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
@@ -92,14 +92,14 @@ class BiLSTMClassifier(nn.Module):
         return output
 
 num = 0
-# todo: 定义pytorch lightning
+# todo: Define pytorch lightning
 class BiLSTMLighting(pl.LightningModule):
 
     def __init__(self, drop, hidden_dim, output_dim):
         global num
         super(BiLSTMLighting, self).__init__()
-        self.model = BiLSTMClassifier(drop, hidden_dim, output_dim)  # 设置model
-        self.criterion = nn.CrossEntropyLoss()  # 设置损失函数
+        self.model = BiLSTMClassifier(drop, hidden_dim, output_dim)  # Setting up the model
+        self.criterion = nn.CrossEntropyLoss()  # Setting the loss function
         self.test_dataset = MydataSet(f'./data/archive/cstest/test{num}.csv', 'train')
 
     def configure_optimizers(self):
@@ -117,14 +117,14 @@ class BiLSTMLighting(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         input_ids, attention_mask, token_type_ids, labels = batch  # x, y = batch
         y = one_hot(labels, num_classes=4)
-        # 将one_hot_labels类型转换成float
+        # Convert one_hot_labels type to float
         y = y.to(dtype=torch.float)
         # forward pass
         y_hat = self.model(input_ids, attention_mask, token_type_ids)
-        y_hat = y_hat.squeeze()  # 将[128, 1, 3]挤压为[128,3]
+        y_hat = y_hat.squeeze()  # Squeeze [128, 1, 3] into [128,3]
         loss = self.criterion(y_hat, y)  # criterion(input, target)
-        self.log('train_loss', loss, prog_bar=True, logger=True, on_step=True, on_epoch=True)  # 将loss输出在控制台
-        return loss  # 必须把log返回回去才有用
+        self.log('train_loss', loss, prog_bar=True, logger=True, on_step=True, on_epoch=True)  # Output the loss on the console
+        return loss  # The log must be returned to be useful
 
     def val_dataloader(self):
         val_loader = DataLoader(dataset=self.val_dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=False)
@@ -147,7 +147,7 @@ class BiLSTMLighting(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         input_ids, attention_mask, token_type_ids, labels = batch
-        target = labels  # 用于待会儿计算acc和f1-score
+        target = labels  # For calculating acc and f1-score later
         y = one_hot(target, num_classes=4)
         y = y.to(dtype=torch.float)
         # forward pass
@@ -156,18 +156,17 @@ class BiLSTMLighting(pl.LightningModule):
         pred = torch.argmax(y_hat, dim=1)
         print(pred)
         with open('preds_csharp.json', 'a') as f:
-            json.dump(pred.cpu().numpy().tolist(), f)  # 先将tensor转为numpy，再转为list保存
+            json.dump(pred.cpu().numpy().tolist(), f)  # First convert tensor to numpy, then convert to list and save it
 
         acc = (pred == target).float().mean()
 
         loss = self.criterion(y_hat, y)
         self.log('loss', loss)
-        # task: Literal["binary", "multiclass", "multilabel"],对应[二分类，多分类，多标签]
-        #  average=None分别输出各个类别, 不加默认算平均
+        # average=None outputs each category separately, without default averaging
 
 
 def test():
-    # 加载之前训练好的最优模型参数
+    # Load the parameters of the previously trained optimal model
     model = BiLSTMLighting.load_from_checkpoint(checkpoint_path=PATH,
                                                 drop=dropout, hidden_dim=rnn_hidden, output_dim=class_num)
     trainer = Trainer(fast_dev_run=False)

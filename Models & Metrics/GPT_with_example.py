@@ -21,14 +21,14 @@ def is_camel_case(s):
     return s != s.lower() and s != s.upper() and "_" not in s
 
 def to_Underline(x):
-    """转空格命名"""
+    """Rename by transposing spaces"""
     return re.sub('(?<=[a-z])[A-Z]|(?<!^)[A-Z](?=[a-z])', ' \g<0>', x).lower()
 
 def remove_between_identifiers(text, identifier_start, identifier_end):
-    # 定义正则表达式模式
+    # Define regex patterns
     pattern = f'(?<={identifier_start}).*?(?={identifier_end})'
 
-    # 使用re.sub方法替换匹配到的部分为空字符串
+    # Use the re.sub method to replace the matched portion with the empty string
     result = re.sub(pattern, '', text)
     if identifier_start == 'mmm a':
         result = result.replace('mmm a<nl>', '')
@@ -67,12 +67,12 @@ def process_diff(diff):
     return get_tokens(diff)
 
 
-# 打开JSONL文件并读取数据
+# Open the JSONL file and read the data
 with open(lan, 'r',encoding='utf8') as f:
     json_data = f.readlines()
 data = {"diff_id": 0, "msg": f"0", "msgGPT": f"0", "METEOR Score": f"0", "BLEU Score": f"0", "ROUGE-L Score": f"0"}
 
-# 遍历 JSON 数据，提取并存储 diff 和 msg
+# Traverse JSON data, extract and store diffs and msgs
 num = 0
 temp = 0
 for item in json_data:
@@ -86,10 +86,10 @@ for item in json_data:
         temp += 1
         if temp == 20:
             temp = 0
-        # 解析 JSON 数据
+        # Parse JSON data
         data = json.loads(item)
 
-        # 提取 diff 和 msg
+        # Extract diff and msg
         diff_id = data['diff_id']
         diff = data['diff']
         result = remove_between_identifiers(diff, 'mmm a', '<nl>')
@@ -107,7 +107,7 @@ for item in json_data:
                 msg_list.append(word)
         msg = ' '.join(msg_list)
         # Example usage:
-        # 提取对应的best_diff和best_msg
+        # Extract the corresponding best_diff and best_msg
         best_diffs_msgs = []
         with open(best_file, 'r',encoding='utf8') as file:
             for line in file:
@@ -117,7 +117,7 @@ for item in json_data:
                         diff_key = f'best_diff{i}'
                         msg_key = f'best_msg{i}'
                         if diff_key in best_data and msg_key in best_data:
-                            # 应用相同的预处理步骤
+                            # Apply the same pre-processing steps
                             result_b = remove_between_identifiers(best_data[diff_key], 'mmm a', '<nl>')
                             best_diff = get_tokens(remove_between_identifiers(result_b, 'ppp b', '<nl>'))
                             best_msg = best_data[msg_key]
@@ -131,7 +131,7 @@ for item in json_data:
         try:
             for num_examples in [1,3,5,10]:
                 if len(best_diffs_msgs) >= num_examples:
-                    # 构建prompt
+                    # Build the prompt
                     prompt = ""
                     for best_diff, best_msg in best_diffs_msgs[:num_examples]:
                         prompt += f"{best_diff}\nPlease write a commit message for the above code change.\n{best_msg}\n\n"
@@ -167,7 +167,7 @@ for item in json_data:
                         msgGPTs.append(msgGPT)
                     print(msgGPTs)
 
-                    # 将 diff 和 msg ,score添加到列表中
+                    # Add diff and msg, score to list
                     data = {"diff_id": diff_id, "msg": f"{msg}"}
                     for i in range(5):
                         data[f"msgGPT{i}"] = f"{msgGPTs[i]}"
@@ -187,7 +187,7 @@ for item in json_data:
             time.sleep(1)
             attempts += 1
             if attempts == 5:
-                print(f"{item} 已经重试了3次，仍然失败。")
-                # 这里可以选择记录失败的item，或者是进行其他错误处理
+                print(f"{item} has been retried 3 times and still fails.")
+                # Here you can choose to log the failed item, or perform other error handling
                 # ...
-                break  # 重试达到3次后，跳出内部循环，处理下一个item
+                break  # After 3 retries, the internal loop is skipped and the next item is processed
