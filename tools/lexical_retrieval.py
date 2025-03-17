@@ -3,9 +3,18 @@ from nltk.tokenize import word_tokenize
 import json
 import numpy as np
 
-lan = 'java.jsonl'
-train = 'javatrain.jsonl'
-output_filename = 'java_with_best.jsonl'
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--diffs", help="Path to a JSONL file with diffs to find similar diffs to", required=True)
+parser.add_argument("--dataset", help="Path to the diff language's full dataset", required=True)
+parser.add_argument("--output", help="Path to the output file with top 10 matches", required=True)
+
+args = parser.parse_args()
+
+lan = args.diffs
+train = args.dataset
+output_filename = args.output
 
 def compute_bm25_top_10_scores(jsonl_filename, query_string):
     # Read the JSONL file and initialize a list to store the JSON entries

@@ -3,12 +3,20 @@ import numpy as np
 from numpy.linalg import norm
 from collections import defaultdict
 import time
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--vec-diffs", help="Path to a JSONL file with vectorized code diffs to find similar diffs to", required=True)
+parser.add_argument("--vec-dataset", help="Path to a JSONL file with a vectorized dataset for this language", required=True)
+parser.add_argument("--diff-ids", help="Path to a JSONL file with diff IDs and their corresponding messages", required=True)
+parser.add_argument("--output", help="Path to an output JSONL file with the best fitting diffs and their commit messages", required=True)
 
-vlan = 'vpy1no.jsonl'
-vtrain = 'encoded_diffspy2.jsonl'
-output_file = 'pybest_no_selectv.jsonl'
-input_file = 'pytrain_no_selectv.jsonl'
+args = parser.parse_args()
+
+vlan = args.vec_diffs
+vtrain = args.vec_dataset
+output_file = args.output
+input_file = args.diff_ids
 
 def load_vectors(jsonl_file):
     """Load diff_id and vector from JSONL file"""

@@ -11,9 +11,16 @@ import traceback
 from openai import OpenAI
 import time
 import tqdm
+import argparse
 
-lan = 'datasets/py.jsonl'
-output_file = 'data/vpy1no.jsonl'
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", help="Path to a language's full dataset", required=True)
+parser.add_argument("--output", help="Path to output file with vectorized code diffs", required=True)
+
+args = parser.parse_args()
+
+lan = args.dataset
+output_file = args.output
 
 def is_camel_case(s):
     return s != s.lower() and s != s.upper() and "_" not in s
