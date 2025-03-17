@@ -8,6 +8,7 @@ import torch.optim as optim
 from torch.nn.functional import one_hot
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
+from torchmetrics.functional import accuracy, recall, precision, f1_score
 import os
 from pathlib import Path
 
@@ -156,12 +157,6 @@ class BiLSTMLighting(pl.LightningModule):
         y_hat = self.model(input_ids, attention_mask, token_type_ids)
         # Prediction
         pred = torch.argmax(y_hat, dim=1)
-
-        # Calculate accuracy for this batch
-        accuracy = (pred == labels).float().mean()
-        
-        # Log the accuracy
-        self.log("test_accuracy", accuracy, on_step=False, on_epoch=True)
         
         output = {"pred": pred, "label": labels}
         self.test_step_outputs.append(output)  # Store output
@@ -173,18 +168,52 @@ class BiLSTMLighting(pl.LightningModule):
         all_labels = []
         
         for output in self.test_step_outputs:
-            preds = output["pred"].cpu().tolist()
-            labels = output["label"].cpu().tolist()
+            preds = output["pred"].cpu()
+            labels = output["label"].cpu()
             
-            all_predictions.extend(preds)
-            all_labels.extend(labels)
+            all_predictions.append(preds)
+            all_labels.append(labels)
+        
+        # Concatenate all batch predictions and labels
+        all_predictions = torch.cat(all_predictions)
+        all_labels = torch.cat(all_labels)
+        
+        # Calculate metrics
+        accuracy_score = (all_predictions == all_labels).float().mean()
+        precision_score = precision(all_predictions, all_labels, task="multiclass", num_classes=class_num, average='macro')
+        recall_score = recall(all_predictions, all_labels, task="multiclass", num_classes=class_num, average='macro')
+        f1 = f1_score(all_predictions, all_labels, task="multiclass", num_classes=class_num, average='macro')
+        
+        # Log metrics
+        self.log("test_accuracy", accuracy_score)
+        self.log("test_precision", precision_score)
+        self.log("test_recall", recall_score)
+        self.log("test_f1", f1)
+        
+        # Print metrics
+        print(f"Test Results:")
+        print(f"Accuracy: {accuracy_score:.4f}")
+        print(f"Precision: {precision_score:.4f}")
+        print(f"Recall: {recall_score:.4f}")
+        print(f"F1 Score: {f1:.4f}")
+        
+        # Per-class metrics
+        class_precision = precision(all_predictions, all_labels, task="multiclass", num_classes=class_num, average=None)
+        class_recall = recall(all_predictions, all_labels, task="multiclass", num_classes=class_num, average=None)
+        class_f1 = f1_score(all_predictions, all_labels, task="multiclass", num_classes=class_num, average=None)
+        
+        print("\nPer-class metrics:")
+        for i in range(class_num):
+            print(f"Class {i}: Precision={class_precision[i]:.4f}, Recall={class_recall[i]:.4f}, F1={class_f1[i]:.4f}")
         
         # Save predictions to file
         with open("predictions.txt", "w") as f:
-            for pred, label in zip(all_predictions, all_labels):
+            f.write(f"Overall Metrics: Accuracy={accuracy_score:.4f}, Precision={precision_score:.4f}, Recall={recall_score:.4f}, F1={f1:.4f}\n\n")
+            f.write("Predictions:\n")
+            for pred, label in zip(all_predictions.tolist(), all_labels.tolist()):
                 f.write(f"Predicted: {pred}, Actual: {label}\n")
-                
-        print(f"Test completed. Predictions saved to predictions.txt")
+        
+        print(f"Test completed. Predictions and metrics saved to predictions.txt")
         
         # Clear the outputs to free memory
         self.test_step_outputs.clear()
