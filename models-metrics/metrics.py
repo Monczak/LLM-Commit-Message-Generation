@@ -55,17 +55,8 @@ class CommitMessageEvaluator:
             
         Returns:
             float: The BLEU score
-        """
-        if not reference or not hypothesis:
-            return 0.0
-            
-        reference_tokens = nltk.word_tokenize(reference)
-        hypothesis_tokens = nltk.word_tokenize(hypothesis)
-        
-        if not reference_tokens or not hypothesis_tokens:
-            return 0.0
-            
-        return sentence_bleu([reference_tokens], hypothesis_tokens)
+        """            
+        return sentence_bleu([reference], hypothesis)
     
     def calculate_rouge_l(self, reference, hypothesis):
         """
@@ -78,14 +69,8 @@ class CommitMessageEvaluator:
         Returns:
             dict: The ROUGE-L score with 'r', 'p', and 'f' values
         """
-        if not reference or not hypothesis:
-            return {'r': 0.0, 'p': 0.0, 'f': 0.0}
-            
-        try:
-            scores = self.rouge.get_scores(hypothesis, reference, avg=True)
-            return scores['rouge-l']
-        except Exception:
-            return {'r': 0.0, 'p': 0.0, 'f': 0.0}
+        scores = self.rouge.get_scores(hypothesis, reference, avg=True)
+        return scores['rouge-l']
     
     def evaluate(self, reference, hypothesis):
         """
